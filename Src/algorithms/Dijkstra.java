@@ -53,7 +53,7 @@ public class Dijkstra {
 
                 //update shorter distance
                 if (newDistance < distances.get(neighbour)){
-                    
+
                     distances.put(neighbour, newDistance);
 
                     priorityQueue.add(neighbour);
@@ -144,4 +144,45 @@ public class Dijkstra {
 
         return distances.get(destination);
     }
+
+    public static void main(String[] args) {
+
+        Graph graph = new Graph();
+
+        // Add locations
+        graph.addLocation("Kalmunai");
+        graph.addLocation("Maruthamunai");
+        graph.addLocation("Sainthamaruthu");
+        graph.addLocation("Addalaichenai");
+
+        // Add roads
+        graph.addRoad("Kalmunai", "Maruthamunai", 5);
+        graph.addRoad("Kalmunai", "Sainthamaruthu", 3);
+        graph.addRoad("Maruthamunai", "Addalaichenai", 12);
+        graph.addRoad("Sainthamaruthu", "Addalaichenai", 8);
+
+        // Create Dijkstra object
+        Dijkstra dijkstra = new Dijkstra(graph);
+
+        // Calculate shortest route
+        System.out.println("\nShortest Route:");
+
+        System.out.println(
+            dijkstra.findShortestRoute(
+                "Kalmunai",
+                "Addalaichenai"
+            )
+        );
+
+        // Calculate shortest distance
+        System.out.println("\nShortest Distance:");
+
+        System.out.println(
+            dijkstra.getShortestDistance(
+                "Kalmunai",
+                "Addalaichenai"
+            ) + " km"
+        );
+    }
+
 }

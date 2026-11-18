@@ -48,7 +48,12 @@ public class FloydWarshall {
 
             for(Graph.Edge edge : graph.getNeighbours(location)){
 
-                int destinationIndex = locationIndexes.get(edge.getDestination());
+                Integer destinationIndex = locationIndexes.get(edge.getDestination());
+
+                if (destinationIndex == null){
+                    System.out.println("destination location not found: " + edge.getDestination());
+                    continue;
+                }
 
                 distances[i][destinationIndex] = edge.getDistance();
             }
@@ -139,4 +144,37 @@ public class FloydWarshall {
             System.out.println("Shortest distance from " + source + "to " + destination + " is " + distance + " km");
         }
     }
+
+     public static void main(String[] args) {
+
+        Graph graph = new Graph();
+
+        // Add locations
+        graph.addLocation("Kalmunai");
+        graph.addLocation("Maruthamunai");
+        graph.addLocation("Sainthamaruthu");
+        graph.addLocation("Addalaichenai");
+
+        // Add roads
+        graph.addRoad("Kalmunai", "Maruthamunai", 5);
+        graph.addRoad("Kalmunai", "Sainthamaruthu", 3);
+        graph.addRoad("Maruthamunai", "Addalaichenai", 12);
+        graph.addRoad("Sainthamaruthu", "Addalaichenai", 8);
+
+        // Create FloydWarshall object
+        FloydWarshall floyd = new FloydWarshall(graph);
+
+        // Calculate shortest paths
+        floyd.calculateShortestPaths();
+
+        // Display distance matrix
+        floyd.displayAllShortDistances();
+
+        // Find distance between two locations
+        floyd.displayShortestDistance(
+                "Kalmunai",
+                "Addalaichenai"
+        );
+    }
+
 }
