@@ -34,6 +34,13 @@ public class RescheduleRequest {
         this.requestStatus = RequestStatus.PENDING;
     }
 
+    //seven parameter constructor
+    public RescheduleRequest(String requestId, String appoinmentId, String patientId, String doctorId, LocalDate requestedDate, LocalTime requestedTime, RequestStatus requestStatus){
+        this(requestId, appoinmentId, patientId, doctorId, requestedDate, requestedTime);
+
+        this.requestStatus = requestStatus;
+    }
+
     //getter method for all attributes
     public String getRequestId(){
         return requestId;
