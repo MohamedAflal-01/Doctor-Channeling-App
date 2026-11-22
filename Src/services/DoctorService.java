@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import Src.models.Doctor;
+import Src.utils.InputValidator;
 
 public class DoctorService {
     
@@ -25,8 +26,34 @@ public class DoctorService {
 
     //register doctor
     public void registerDoctor(Doctor doctor){
+        
+        //check duplicate doctor id
         if(searchDoctorById(doctor.getDoctorId()) != null){
             System.out.println("Doctor ID is already exists");
+            return ;
+        }
+
+        //validate doctor id
+        if (!InputValidator.isNotEmpty(doctor.getDoctorId())){
+            System.out.println("Doctor ID cannot be empty.");
+            return ;
+        }
+
+        //validate doctor name
+        if(!InputValidator.isValidName(doctor.getName())){
+            System.out.println("Invalid doctor name");
+            return;
+        }
+
+        //validate specialization
+        if(!InputValidator.isNotEmpty(doctor.getSpecialization())){
+            System.out.println("Specialization cannot be empty.");
+            return ;
+        }
+
+        //validate consultation fee
+        if(!InputValidator.isValidFee(doctor.getConsultationFee())){
+            System.out.println("Invalid consultation fee.");
             return ;
         }
 
@@ -51,6 +78,11 @@ public class DoctorService {
 
     //search doctor by id
     public Doctor searchDoctorById(String doctorId){
+
+        if(!InputValidator.isNotEmpty(doctorId)){
+            return null;
+        }
+
         for(Doctor doctor :doctors){
             if(doctor.getDoctorId().equalsIgnoreCase(doctorId)){
                 return doctor;
@@ -61,6 +93,11 @@ public class DoctorService {
 
     //search doctor by specialization
     public void searchDoctorBySpecialization(String specialization){
+
+        if(!InputValidator.isNotEmpty(specialization)){
+            System.out.println("Specialization cannot be empty.");
+        }
+
         boolean found = false;
 
         for(Doctor doctor : doctors){
@@ -81,6 +118,24 @@ public class DoctorService {
 
         if(doctor == null){
             System.out.println("Doctor not found");
+            return false;
+        }
+
+        //validate doctor name 
+        if (!InputValidator.isValidName(name)){
+            System.out.println("Invalid doctor name");
+            return false;
+        }
+
+        //validate specialization 
+        if(!InputValidator.isNotEmpty(specialization)){
+            System.out.println("Specialization cannot be empty.");
+            return false;
+        }
+
+        //validate consultation fee
+        if(!InputValidator.isValidFee(consultationFee)){
+            System.out.println("Invalid consultation fee.");
             return false;
         }
 
@@ -111,6 +166,7 @@ public class DoctorService {
     }
 
     //add available time slot
+    //expected formate: YYYY-MM-DD HH:mm
     public boolean addTimeSlot(String doctorId, String timeSlot){
         Doctor doctor = searchDoctorById(doctorId);
 
@@ -119,12 +175,24 @@ public class DoctorService {
             return false;
         }
 
-        if(doctor.getAvailableTimeSlots().contains(timeSlot)){
+        if(!InputValidator.isNotEmpty(timeSlot)){
+            System.out.println("Time slot cannot be empty.");
+            return false;
+        }
+
+        String[] slotParts = timeSlot.trim().split("\\s+");
+
+        if(slotParts.length != 2 || !InputValidator.isValidDate(slotParts[0]) || !InputValidator.isValidTime(slotParts[1])){
+            System.out.println("Invalid time slot Use YYYY-MM-DD HH:mm.");
+            return false;
+        }
+
+        if(doctor.getAvailableTimeSlots().contains(timeSlot.trim())){
             System.out.println("Time slot already exists.");
             return false;
         }
 
-        doctor.addAvailableTimeSlot(timeSlot);
+        doctor.addAvailableTimeSlot(timeSlot.trim());
         saveDoctorsToFile();
 
         System.out.println("Time slot added successfully!");
@@ -133,6 +201,7 @@ public class DoctorService {
 
     //remove available time slot
     public boolean removeTimeSlot(String doctorId, String timeSlot){
+
         Doctor doctor = searchDoctorById(doctorId);
 
         if(doctor == null){
@@ -140,12 +209,24 @@ public class DoctorService {
             return false;
         }
 
-        if(!doctor.getAvailableTimeSlots().contains(timeSlot)){
+        if(!InputValidator.isNotEmpty(timeSlot)){
+            System.out.println("Time slot cannot be empty.");
+            return false;
+        }
+
+        String[] slotParts = timeSlot.trim().split("\\s+");
+
+        if(slotParts.length !=2 || !InputValidator.isValidDate(slotParts[0]) || !InputValidator.isValidDate(slotParts[1])){
+            System.out.println("Invalid time slot. Use YYYY-MM-DD HH:mm.");
+            return false;
+        }
+
+        if(!doctor.getAvailableTimeSlots().contains(timeSlot.trim())){
             System.out.println("Time slot not found.");
             return false;
         }
 
-        doctor.removeTimeSlot(timeSlot);
+        doctor.removeTimeSlot(timeSlot.trim());
         saveDoctorsToFile();
 
         System.out.println("Time slot removed successfully!");
@@ -200,53 +281,74 @@ public class DoctorService {
 
         File file = new File(filePath);
 
-        if(!file.exists()){
+        if (!file.exists()) {
             return;
         }
 
-        try(BufferedReader reader = new BufferedReader(new FileReader(file))){
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+
             String line;
 
             while ((line = reader.readLine()) != null) {
+
                 String[] data = line.split("\\|", -1);
 
-                if(data.length !=5){
+                if (data.length != 5) {
                     System.out.println("Invalid doctor record skipped.");
                     continue;
                 }
 
-                try{
-                    List<String> slots = new ArrayList<>();
+                try {
 
-                    if(!data[3].isEmpty()){
-                        slots = new ArrayList<>(List.of(data[3].split(";"
-                        )));
+                    double fee = Double.parseDouble(data[4]);
+
+                    if (!InputValidator.isNotEmpty(data[0])
+                            || !InputValidator.isValidName(data[1])
+                            || !InputValidator.isNotEmpty(data[2])
+                            || !InputValidator.isValidFee(fee)) {
+
+                        System.out.println("Invalid doctor data skipped.");
+                        continue;
                     }
 
                     Doctor doctor = new Doctor(
-                        data[0], 
-                        data[1], 
-                        data[2], 
-                        Double.parseDouble(data[4]));
+                            data[0],
+                            data[1],
+                            data[2],
+                            fee);
 
-                    for(String slot : slots){
-                        doctor.addAvailableTimeSlot(slot);
+                    if (!data[3].isEmpty()) {
+
+                        String[] slots = data[3].split(";");
+
+                        for (String slot : slots) {
+
+                            String[] parts = slot.trim().split("\\s+");
+
+                            if (parts.length == 2
+                                    && InputValidator.isValidDate(parts[0])
+                                    && InputValidator.isValidTime(parts[1])) {
+
+                                doctor.addAvailableTimeSlot(slot.trim());
+                            }
+                        }
                     }
 
-                    if(searchDoctorById(doctor.getDoctorId()) == null){
+                    if (searchDoctorById(doctor.getDoctorId()) == null) {
                         doctors.add(doctor);
                     }
-                }
 
-                catch(IllegalArgumentException e){
+                } catch (IllegalArgumentException e) {
+
                     System.out.println("Invalid doctor data skipped.");
                 }
             }
+
+        } catch (IOException e) {
+
+            System.out.println("Error occurred while loading doctor records: " + e.getMessage());
         }
 
-        catch(IOException e){
-            System.out.println("Error occured. please coonduct the admin: " + e.getMessage());
-        }
     }
 
     //return a copy of all doctors

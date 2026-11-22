@@ -18,7 +18,7 @@ public class InputValidator {
 
     //validate patient name
     public static boolean isValidName(String name){
-        return name != null && name.trim().matches("[a-zA-Z]+");
+        return name != null && name.trim().matches("[a-zA-Z .'-]+");
     }
 
     //validate mobile number
