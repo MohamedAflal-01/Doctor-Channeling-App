@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import Src.utils.InputValidator;
 import Src.models.Patient;
 
 public class PatientService {
@@ -25,15 +26,67 @@ public class PatientService {
 
     //register a new patient
     public void registerPatient(Patient patient){
+
+        //check duplicate patient id
         if(searchPatientById(patient.getPatientId()) !=null){
             System.out.println("Patient ID is already exist.");
             return;
         }
-        
+
+        //check null patient
+        // if (patient == null){
+        //     System.out.println("Invalid patient record.");
+        //     return;
+        // }
+
+        //validate patient id
+        if(!InputValidator.isNotEmpty(patient.getPatientId())){
+            System.out.println("Patient ID connot be empty");
+            return ;
+        }
+
+        //validate patient name
+        if(!InputValidator.isValidName(patient.getName())){
+            System.out.println("Invalid patient name");
+            return ;
+        }
+
+        //validate mobile number
+        if(!InputValidator.isValidMobileNumber(patient.getMobileNumber())){
+            System.out.println("Invalid mobile number. Enter in 10 digits.");
+            return ;
+        }
+
+        //validate email
+        if(!InputValidator.isValidEmail(patient.getEmail())){
+            System.out.println("Invalid email address.");
+            return ;
+        }
+
+        //validate city
+        if (!InputValidator.isNotEmpty(patient.getCity())){
+            System.out.println("City cannot be empty.. so please fill that.");
+            return ;
+        }
+
+        //validate age
+        if (!InputValidator.isValidAge(patient.getAge())){
+            System.out.println("Invalid age. Age must be between 1 to 120.");
+            return ;
+        }
+
+        //validate medical history
+        if(!InputValidator.isNotEmpty(patient.getMedicalHistory())){
+            System.out.println("Medical history cannot be empty.");
+            return ;
+        }
+
+        //add patient after successfull validation
         patients.add(patient);
         savePatientsToFile();
 
         System.out.println("Patient registered successfully.");
+
         System.out.println("Patient ID: " + patient.getPatientId());
     }
 
@@ -70,6 +123,37 @@ public class PatientService {
             return false;
         }
 
+        //validate mobile number
+        if(!InputValidator.isValidMobileNumber(mobileNumber)){
+            System.out.println("Invalid mobile number.");
+            return false;
+        }
+
+        //validate email
+        if(!InputValidator.isValidEmail(email)){
+            System.out.println("Invalid email address.");
+            return false;
+        }
+
+        //validate city
+        if(!InputValidator.isNotEmpty(city)){
+            System.out.println("City cannot be empty.");
+            return false;
+        }
+
+        //validate age
+        if(!InputValidator.isValidAge(age)){
+            System.out.println("Invalid patient age.");
+            return false;
+        }
+
+        //validate medical history
+        if(!InputValidator.isNotEmpty(medicalHistory)){
+            System.out.println("Medical history cannot be empty.");
+            return false;
+        }
+
+        //update patient details after validation
         patient.setMobileNumber(mobileNumber);
         patient.setemail(email);
         patient.setCity(city);
