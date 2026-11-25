@@ -21,24 +21,26 @@ public class PatientService {
 
     //call the value inside the constructor
     public PatientService(){
+
         patients = new ArrayList<>();
+
         loadPatientsFromFile();
     }
 
     //register a new patient
     public void registerPatient(Patient patient){
 
+        //check null patient
+        if (patient == null){
+            System.out.println("Invalid patient record.");
+            return;
+        }
+
         //check duplicate patient id
         if(searchPatientById(patient.getPatientId()) !=null){
             System.out.println("Patient ID is already exist.");
             return;
         }
-
-        //check null patient
-        // if (patient == null){
-        //     System.out.println("Invalid patient record.");
-        //     return;
-        // }
 
         //validate patient id
         if(!InputValidator.isNotEmpty(patient.getPatientId())){
@@ -84,16 +86,26 @@ public class PatientService {
 
         //add patient after successfull validation
         patients.add(patient);
-        savePatientsToFile();
+        
+        //save patient records
+        if(savePatientsToFile()){
 
-        //send registration notification
-        NotificationService.notifyPatientRegistration(patient);
+            //send registration notification
+            NotificationService.notifyPatientRegistration(patient);
 
-        System.out.println("Patient registered successfully.");
+            System.out.println("Patient registered successfully.");
+        }
+
+        else{
+
+            patients.remove(patient);
+            System.out.println("Patient registration failed because data could not be saved.");
+        }
     }
 
     //display all patient
     public void viewAllPatients(){
+
         if(patients.isEmpty()){
             System.out.println("No patient record is found");
             return;
@@ -107,8 +119,15 @@ public class PatientService {
     //Search patient by id (lenear search)
     public Patient searchPatientById(String PatientId){
 
+        if(PatientId == null){
+
+            return null;
+        }
+
         for (Patient patient : patients){
-           if ( patient.getPatientId().equalsIgnoreCase(PatientId)){
+
+           if ( patient.getPatientId().equalsIgnoreCase(PatientId.trim())){
+
                 return patient;
            }
         }
@@ -118,6 +137,7 @@ public class PatientService {
 
     //update patient details
     public boolean updatePatient(String patientId, String mobileNumber, String email, String city, int age, String medicalHistory){
+
         Patient patient = searchPatientById(patientId);
 
         if(patient ==null){
@@ -155,6 +175,13 @@ public class PatientService {
             return false;
         }
 
+        //Storre old values for rollback
+        String oldMobileNumber = patient.getMobileNumber();
+        String oldEmail = patient.getEmail();
+        String oldCity = patient.getCity();
+        int oldAge = patient.getAge();
+        String oldMedicalHistory = patient.getMedicalHistory();
+
         //update patient details after validation
         patient.setMobileNumber(mobileNumber);
         patient.setemail(email);
@@ -162,10 +189,25 @@ public class PatientService {
         patient.setAge(age);
         patient.setMedicalHistory(medicalHistory);
 
-        savePatientsToFile();
+        //save updated records
+        if(savePatientsToFile()){
 
-        System.out.println("Patient updated successfully.");
-        return true;
+            System.out.println("Patient updated successfully.");
+            return true;
+        }
+
+        else{
+
+            //restore previous values if saving fails
+            patient.setMobileNumber(oldMobileNumber);
+            patient.setemail(oldEmail);
+            patient.setCity(oldCity);
+            patient.setAge(oldAge);
+            patient.setMedicalHistory(oldMedicalHistory);
+
+            System.out.println("Patient updated failed because data could not be saved.");
+            return false;
+        }
     }
 
     //delete patient details
@@ -178,22 +220,44 @@ public class PatientService {
         }
 
         patients.remove(patient);
-        savePatientsToFile();
+        
+        //save updated records
+        if(savePatientsToFile()){
 
-        System.out.println("Patient deleted successfully.");
-        return true;
+            System.out.println("Patient deleted successfully.");
+            return true;
+        }
+
+        else{
+
+            //restore patient if saving fails
+            patients.add(patient);
+            System.out.println("PAtient deletion faild because data could not be saved.");
+            return false;
+        }
     }
+
 
     //generate unique patient id
     public String uniquePatientId(){
+
         int highestId = 0;
 
         for(Patient patient : patients){
+
             String id = patient.getPatientId();
 
-            if(id.matches("p\\d+")){
-                int number = Integer.parseInt(id.substring(1));
-                highestId = Math.max(highestId, number);
+            if(id != null && id.matches("p\\d+")){
+                
+                try{
+                    int number = Integer.parseInt(id.substring(1));
+
+                    highestId = Math.max(highestId, number);
+                }
+
+                catch(NumberFormatException e){
+                    System.out.println("Invalid patient ID formate: " + id);
+                }
             }
         }
 
@@ -201,31 +265,69 @@ public class PatientService {
     }
 
     //save patient records to text file
-    public void savePatientsToFile(){
+    public boolean savePatientsToFile(){
+
         File file = new File(filePath);
 
         try{
+
+            //create data folder if it does not exists
             File parent = file.getParentFile();
 
-            if (parent != null){
-                parent.mkdirs();
+            if (parent != null && !parent.exists()){
+                
+                if(!parent.mkdirs() && !parent.exists()){
+                    System.out.println("Unable to create data folder.");
+                }
             }
 
+            //save patient record
             try(BufferedWriter writer = new BufferedWriter(new FileWriter(file))){
+
                 for (Patient patient : patients){
+
+                    //prevent seperator conflicts
+                    if(!isValidFileField(patient.getPatientId()) || !isValidFileField(patient.getName()) || !isValidFileField(patient.getMobileNumber()) || !isValidFileField(patient.getEmail()) || !isValidFileField(patient.getCity()) || !isValidFileField(patient.getMedicalHistory())){
+
+                        System.out.println("Unable to save patient record containing invalid file charecters.");
+                        return false;
+                    }
+
                     writer.write(patient.getPatientId() + "|" + patient.getName() + "|" + patient.getMobileNumber() + "|" + patient.getEmail() + "|" + patient.getCity() + "|" + patient.getAge() + "|" + patient.getMedicalHistory());
+                    
                     writer.newLine();
                 }
             }
+            return true;
         } 
         
         catch (IOException e){
-            System.out.println("Error occured. please conduct the admin." + e.getMessage());
+            System.out.println("Error occured while saving patient records." + e.getMessage());
+            return false;
         }
+    }
+
+    //check whether a field can safly be stored in the text file
+    private boolean isValidFileField(String value){
+        return value != null && !value.contains("|") && !value.contains("\n") && !value.contains("\r");
+    }
+
+    //validate a patient record loaded from the file
+    private boolean isValidPatientRecord(Patient patient){
+
+        return patient != null
+            && InputValidator.isNotEmpty(patient.getPatientId())
+            && InputValidator.isValidName(patient.getName())
+            && InputValidator.isValidMobileNumber(patient.getMobileNumber())
+            && InputValidator.isValidEmail(patient.getEmail())
+            && InputValidator.isNotEmpty(patient.getCity())
+            && InputValidator.isValidAge(patient.getAge())
+            &&InputValidator.isNotEmpty(patient.getMedicalHistory());
     }
 
     //load patient record from text file
     public void loadPatientsFromFile(){
+
         File file = new File(filePath);
 
         if (!file.exists()){
@@ -248,13 +350,28 @@ public class PatientService {
                 try{
                     Patient patient =new Patient(data[0], data[1], data[2], data[3], data[4], Integer.parseInt(data[5]), data[6]);
 
+                    if(!isValidPatientRecord(patient)){
+
+                        System.out.println("Skipping invalid patient data.");
+                        continue;
+                    }
+
+                    if(searchPatientById(patient.getPatientId()) != null){
+
+                        System.out.println("Skipping duplicate patient ID.");
+                        continue;
+                    }
+
                     patients.add(patient);
                 }
 
                 catch(IllegalArgumentException e){
+
                     System.out.println("Skipping invalid patient data.");
                 }
             } 
+
+            System.out.println("Patient records loaded successfully.");
     
         }
 
