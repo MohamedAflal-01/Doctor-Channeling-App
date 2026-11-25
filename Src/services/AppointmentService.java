@@ -16,9 +16,11 @@ import Src.models.Doctor;
 import Src.models.Patient;
 import Src.models.RescheduleRequest;
 import Src.structures.RescheduleQueue;
+import Src.utils.NotificationService;
 
 public class AppointmentService {
 
+    //set attributes in private
     private ArrayList<Appoinment> appoinments;
     private ArrayList<RescheduleRequest> rescheduleRequests;
 
@@ -141,6 +143,17 @@ public class AppointmentService {
         appoinments.add(appoinment);
 
         saveAppointmentsToFile();
+        
+        //notify patient according to appinment status
+        if(status == Appoinment.AppoinmentStatus.CONFIRMED){
+
+            NotificationService.notifyAppoinmentBooking(patient, appoinment);
+        }
+
+        else if(status == Appoinment.AppoinmentStatus.WAITING){
+
+            NotificationService.notifyWaitingList(patient, appoinment);
+        }
     }
 
     // Generate waiting queue number
@@ -257,6 +270,7 @@ public class AppointmentService {
             return false;
         }
 
+        //update appoinment status
         appoinment.setStatus(
                 Appoinment.AppoinmentStatus.CANCELLED);
 
@@ -270,8 +284,10 @@ public class AppointmentService {
 
         if (doctor != null) {
 
+            //release cancelled appoinment slot
             doctor.addAvailableTimeSlot(timeSlot);
 
+            //promot the next waiting list
             assignNextWaitingPatient(
                     appoinment.getdoctorId(),
                     appoinment.getAppoinmentDate(),
@@ -281,6 +297,14 @@ public class AppointmentService {
         }
 
         saveAppointmentsToFile();
+
+        //Notify patient about cancellation
+        Patient patient = patientService.searchPatientById((appoinment.getPatientId()));
+
+        if(patient != null){
+
+            NotificationService.notifyAppoinmentCancellation(patient, appoinment);
+        }
 
         System.out.println("Appointment cancelled successfully!");
 
@@ -328,6 +352,14 @@ public class AppointmentService {
                 doctor.removeTimeSlot(timeSlot);
             }
 
+            //notify the promoted patient
+            Patient patient = patientService.searchPatientById(nextPatient.getPatientId());
+
+            if(patient != null){
+
+                NotificationService.notifyWaitingListPromotion(patient, nextPatient);
+            }
+
             System.out.println(
                     "Waiting patient promoted successfully!");
 
@@ -336,9 +368,7 @@ public class AppointmentService {
         }
     }
 
-    // --------------------------------------------------
-    // PHASE 7: RESCHEDULE MANAGEMENT USING QUEUE
-    // --------------------------------------------------
+    // RESCHEDULE MANAGEMENT USING QUEUE starting
 
     // Submit a reschedule request
     public boolean rescheduleAppoinment(
@@ -394,6 +424,14 @@ public class AppointmentService {
         rescheduleQueue.enqueue(request);
 
         saveRescheduleRequestsToFile();
+
+        //notify patient about pending request
+        Patient patient = patientService.searchPatientById(request.getPatientId());
+
+        if(patient != null){
+
+            NotificationService.notifyRescheduleRequest(patient, request);
+        }
 
         System.out.println(
                 "Reschedule request submitted successfully.");
@@ -486,6 +524,8 @@ public class AppointmentService {
 
             request.setRequestStatus(
                     RescheduleRequest.RequestStatus.REJECTED);
+            
+            notifyRescheduleStatus(request);
 
             System.out.println(
                     "Reschedule request rejected: appointment is unavailable.");
@@ -555,6 +595,16 @@ public class AppointmentService {
         request.setRequestStatus(
                 RescheduleRequest.RequestStatus.APPROVED);
 
+        //notify patient about successfull rescheduling
+        Patient patient = patientService.searchPatientById(appoinment.getPatientId());
+
+        if(patient != null){
+
+            NotificationService.notifyAppoinmentRescheduling(patient, appoinment);
+
+            NotificationService.notifyRescheduleRequest(patient, request);
+        }
+
         System.out.println(
                 "Reschedule request approved successfully.");
 
@@ -563,9 +613,17 @@ public class AppointmentService {
 
         System.out.println(
                 "Patient ID: " + appoinment.getPatientId());
+    }
 
-        System.out.println(
-                "Patient notification: Appointment rescheduled.");
+    //notify patient about reschedule request status
+    private void notifyRescheduleStatus(RescheduleRequest request){
+
+        Patient patient = patientService.searchPatientById(request.getPatientId());
+
+        if(patient != null){
+
+            NotificationService.notifyRescheduleRequest(patient, request);
+        }
     }
 
     // Display pending reschedule requests
