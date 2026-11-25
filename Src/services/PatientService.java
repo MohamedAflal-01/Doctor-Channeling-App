@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import Src.utils.InputValidator;
+import Src.utils.NotificationService;
 import Src.models.Patient;
 
 public class PatientService {
@@ -85,9 +86,10 @@ public class PatientService {
         patients.add(patient);
         savePatientsToFile();
 
-        System.out.println("Patient registered successfully.");
+        //send registration notification
+        NotificationService.notifyPatientRegistration(patient);
 
-        System.out.println("Patient ID: " + patient.getPatientId());
+        System.out.println("Patient registered successfully.");
     }
 
     //display all patient

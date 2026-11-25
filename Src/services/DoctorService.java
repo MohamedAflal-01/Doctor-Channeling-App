@@ -11,6 +11,7 @@ import java.util.List;
 
 import Src.models.Doctor;
 import Src.utils.InputValidator;
+import Src.utils.NotificationService;
 
 public class DoctorService {
     
@@ -59,6 +60,9 @@ public class DoctorService {
 
         doctors.add(doctor);
         saveDoctorsToFile();
+
+        //send doctor availability notification
+        NotificationService.notifyDoctorAvailability(doctor);
 
         System.out.println("Doctor registered successfully!");
         System.out.println("Doctor ID: " + doctor.getDoctorId());
@@ -194,6 +198,9 @@ public class DoctorService {
 
         doctor.addAvailableTimeSlot(timeSlot.trim());
         saveDoctorsToFile();
+
+        //notify about updated doctor availability
+        NotificationService.notifyDoctorAvailability(doctor);
 
         System.out.println("Time slot added successfully!");
         return  true;
