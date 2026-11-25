@@ -1,0 +1,8 @@
+LOCATION|Sainthamaruthu
+LOCATION|Addalaichenai
+LOCATION|Maruthamunai
+LOCATION|Kalmunai
+Road|Sainthamaruthu|Kalmunai|3.0
+Road|Sainthamaruthu|Addalaichenai|8.0
+Road|Addalaichenai|Maruthamunai|12.0
+Road|Maruthamunai|Kalmunai|5.0
