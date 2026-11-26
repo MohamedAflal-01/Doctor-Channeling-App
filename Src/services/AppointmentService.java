@@ -10,11 +10,15 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 import Src.models.Appoinment;
 import Src.models.Doctor;
 import Src.models.Patient;
 import Src.models.RescheduleRequest;
+import Src.structures.PatientQueue;
 import Src.structures.RescheduleQueue;
 import Src.utils.NotificationService;
 
@@ -26,7 +30,11 @@ public class AppointmentService {
 
     private RescheduleQueue rescheduleQueue;
 
+    //seperate waiting queue for each doctor and time slot
+    private Map<String, PatientQueue> waitingQueues;
+
     private final String filePath = "Data/appointments.txt";
+
     private final String rescheduleFilePath =
             "Data/reschedule_requests.txt";
 
@@ -41,12 +49,16 @@ public class AppointmentService {
         appoinments = new ArrayList<>();
         rescheduleRequests = new ArrayList<>();
         rescheduleQueue = new RescheduleQueue();
+        waitingQueues = new HashMap<>();
 
         this.patientService = patientService;
         this.doctorService = doctorService;
 
         loadAppoinmentsFromFile();
+        rebuildWaitingQueues();
         loadRescheduleRequestsFromFile();
+
+        System.out.println("Appoinment service initialized successfully.");
     }
 
     // Check slot availability
@@ -75,13 +87,69 @@ public class AppointmentService {
 
             String id = appoinment.getAppoinmentId();
 
-            if (id.matches("A\\d+")) {
+            if (id != null && id.matches("A\\d+")) {
+
                 int number = Integer.parseInt(id.substring(1));
+
                 highestId = Math.max(highestId, number);
             }
         }
 
         return String.format("A%03d", highestId + 1);
+    }
+
+    //generate a unique key for each doctor time slot
+    private String generateWaitingQueueKey(String doctorId, LocalDate date, LocalTime time){
+
+        return doctorId.toUpperCase() + "|" + date + "|" + time;
+    }
+
+    //rebuild waiting queue from saved appoinment records
+    private void rebuildWaitingQueues(){
+
+        waitingQueues.clear();
+
+        ArrayList<Appoinment> waitingAppoinments = new ArrayList<>();
+
+        //collect all waiting appoinments
+        for(Appoinment appoinment : appoinments){
+
+            if(appoinment.getStatus() == Appoinment.AppoinmentStatus.WAITING){
+
+                waitingAppoinments.add(appoinment);
+            }
+        }
+
+        //sort by queue number to preserve FIFO order
+        waitingAppoinments.sort(Comparator.comparingInt(Appoinment::getQueueNumber));
+
+        //reconstruct sperate waiting queue
+        for(Appoinment appoinment : waitingAppoinments){
+
+            String key = generateWaitingQueueKey(appoinment.getdoctorId(), appoinment.getAppoinmentDate(), appoinment.getAppoinmentTime());
+
+            PatientQueue queue = waitingQueues.computeIfAbsent(key, k -> new PatientQueue());
+
+            queue.enqueue(appoinment);
+        }
+        
+        System.out.println("Waiting queues reconstructed sussfully!");
+    }
+
+    //get the next wueue number for a particular time slot
+    private int getNextQueueNumber(String doctorId, LocalDate date, LocalTime time){
+
+        int highestNumber = 0;
+
+        for(Appoinment appoinment : appoinments){
+
+            if(appoinment.getdoctorId().equalsIgnoreCase(doctorId) && appoinment.getAppoinmentDate().equals(date) && appoinment.getAppoinmentTime().equals(time) && appoinment.getStatus() == Appoinment.AppoinmentStatus.WAITING){
+
+                highestNumber = Math.max(highestNumber, appoinment.getQueueNumber());
+            }
+        }
+
+        return highestNumber +1;
     }
 
     // Book appointment
@@ -92,6 +160,7 @@ public class AppointmentService {
             LocalTime time) {
 
         Patient patient = patientService.searchPatientById(patientId);
+
         Doctor doctor = doctorService.searchDoctorById(doctorID);
 
         if (patient == null) {
@@ -117,7 +186,9 @@ public class AppointmentService {
             doctorService.saveDoctorsToFile();
 
             System.out.println("Appointment confirmed!");
-        } else {
+        } 
+        
+        else {
 
             status = Appoinment.AppoinmentStatus.WAITING;
 
@@ -142,6 +213,16 @@ public class AppointmentService {
 
         appoinments.add(appoinment);
 
+        //add waiting appoinment to the correct FIFO queue
+        if(status == Appoinment.AppoinmentStatus.WAITING){
+
+            String key = generateWaitingQueueKey(doctorID, date, time);
+
+            PatientQueue queue = waitingQueues.computeIfAbsent(key, k -> new PatientQueue());
+
+            queue.enqueue(appoinment);
+        }
+
         saveAppointmentsToFile();
         
         //notify patient according to appinment status
@@ -156,38 +237,17 @@ public class AppointmentService {
         }
     }
 
-    // Generate waiting queue number
-    private int getNextQueueNumber(
-            String doctorId,
-            LocalDate date,
-            LocalTime time) {
-
-        int highestNumber = 0;
-
-        for (Appoinment appoinment : appoinments) {
-
-            if (appoinment.getdoctorId().equals(doctorId)
-                    && appoinment.getAppoinmentDate().equals(date)
-                    && appoinment.getAppoinmentTime().equals(time)
-                    && appoinment.getStatus()
-                    == Appoinment.AppoinmentStatus.WAITING) {
-
-                highestNumber = Math.max(
-                        highestNumber,
-                        appoinment.getQueueNumber());
-            }
-        }
-
-        return highestNumber + 1;
-    }
-
     // Search appointment by ID
     public Appoinment searchAppoinmentById(String appoinmentId) {
+
+        if(appoinmentId == null){
+            return null;
+        }
 
         for (Appoinment appoinment : appoinments) {
 
             if (appoinment.getAppoinmentId()
-                    .equalsIgnoreCase(appoinmentId)) {
+                    .equalsIgnoreCase(appoinmentId.trim())) {
 
                 return appoinment;
             }
@@ -200,6 +260,7 @@ public class AppointmentService {
     public void viewAllAppoinment() {
 
         if (appoinments.isEmpty()) {
+
             System.out.println("No appointments found yet.");
             return;
         }
@@ -317,54 +378,128 @@ public class AppointmentService {
             LocalDate date,
             LocalTime time) {
 
-        Appoinment nextPatient = null;
+        String key = generateWaitingQueueKey(doctorId, date, time);
 
-        for (Appoinment appoinment : appoinments) {
+        PatientQueue queue = waitingQueues.get(key);
 
-            if (appoinment.getdoctorId().equals(doctorId)
-                    && appoinment.getAppoinmentDate().equals(date)
-                    && appoinment.getAppoinmentTime().equals(time)
-                    && appoinment.getStatus()
-                    == Appoinment.AppoinmentStatus.WAITING) {
+        if(queue == null || queue.isEmpty()){
+            
+            System.out.println("No patients are waiting for this time slot");
+            return ;
+        }
 
-                if (nextPatient == null
-                        || appoinment.getQueueNumber()
-                        < nextPatient.getQueueNumber()) {
+        //get the first patient from the FIFO queue
+        Appoinment nextPatient = queue.dequeue();
 
-                    nextPatient = appoinment;
-                }
+        if(nextPatient == null){
+            return ;
+        }
+
+        //confirm the waiting appoinment
+        nextPatient.setStatus(Appoinment.AppoinmentStatus.CONFIRMED);
+
+        nextPatient.setQueueNumber(0);
+
+        //reserve the released doctor slot
+        Doctor doctor = doctorService.searchDoctorById(doctorId);
+
+        if(doctor != null){
+
+            String timeSlot = date + " " + time;
+
+            doctor.removeTimeSlot(timeSlot);
+        }
+
+        //remove empty queue from the map
+        if(queue.isEmpty()){
+
+            waitingQueues.remove(key);
+        }
+
+        //notify to the promoted patient
+        Patient patient = patientService.searchPatientById(nextPatient.getPatientId());
+
+        if(patient != null){
+
+            NotificationService.notifyWaitingListPromotion(patient, nextPatient);
+        }
+
+        System.out.println("Waiting patient promoted successfully!");
+
+        System.out.println("Patient ID: " + nextPatient.getPatientId());
+
+        saveAppointmentsToFile();
+
+        doctorService.saveDoctorsToFile();
+    }
+
+    //display all waiting list
+    public void displayAllWaitingLists(){
+
+        if(waitingQueues.isEmpty()){
+
+            System.out.println("No patients are currently in waiting.");
+            return ;
+        }
+
+        System.out.println("\n========== ALL WAITING LISTS ==========");
+
+        for(Map.Entry<String, PatientQueue> entry : waitingQueues.entrySet()){
+
+            PatientQueue queue = entry.getValue();
+
+            if(!queue.isEmpty()){
+
+                System.out.println("\nWaiting List: " + entry.getKey());
+
+                queue.displayQueue();
             }
         }
 
-        if (nextPatient != null) {
+    }
 
-            nextPatient.setStatus(
-                    Appoinment.AppoinmentStatus.CONFIRMED);
+    //display waiting list for a specific doctor and time slot
+    public void displayWaitingList(String doctorId, LocalDate date, LocalTime time){
 
-            nextPatient.setQueueNumber(0);
+        String key = generateWaitingQueueKey(doctorId, date, time);
 
-            Doctor doctor =
-                    doctorService.searchDoctorById(doctorId);
+        PatientQueue queue = waitingQueues.get(key);
 
-            if (doctor != null) {
+        if(queue == null || queue.isEmpty()){
 
-                String timeSlot = date + " " + time;
-                doctor.removeTimeSlot(timeSlot);
-            }
+            System.out.println("No patients are waiting for this slot.");
+            return ;
+        }
 
-            //notify the promoted patient
-            Patient patient = patientService.searchPatientById(nextPatient.getPatientId());
+        System.out.println("\n========== WAITING LIST ==========");
 
-            if(patient != null){
+        System.out.println("Doctor ID: " + doctorId);
+        System.out.println("Date: " + date);
+        System.out.println("Time: " + time);
 
-                NotificationService.notifyWaitingListPromotion(patient, nextPatient);
-            }
+        queue.displayQueue();
+    }
 
-            System.out.println(
-                    "Waiting patient promoted successfully!");
+    //display the next witing patient without removing
+    public void diplayNextWaitingPatient(String doctorId, LocalDate date, LocalTime time){
 
-            System.out.println(
-                    "Patient ID: " + nextPatient.getPatientId());
+        String key = generateWaitingQueueKey(doctorId, date, time);
+
+        PatientQueue queue = waitingQueues.get(key);
+
+        if(queue == null || queue.isEmpty()){
+
+            System.out.println("No patients are waiting for this time slot.");
+            return ;
+        }
+
+        Appoinment nextPatient = queue.peek();
+
+        System.out.println("\n========== NEXT WAITING PATIENT ==========");
+
+        if(nextPatient != null){
+
+            nextPatient.displayAppoinmentDetails();
         }
     }
 
@@ -472,9 +607,10 @@ public class AppointmentService {
 
             String id = request.getRequestId();
 
-            if (id.matches("R\\d+")) {
+            if (id != null && id.matches("R\\d+")) {
 
                 int number = Integer.parseInt(id.substring(1));
+
                 highestId = Math.max(highestId, number);
             }
         }
@@ -542,6 +678,8 @@ public class AppointmentService {
             request.setRequestStatus(
                     RescheduleRequest.RequestStatus.REJECTED);
 
+            notifyRescheduleStatus(request);
+
             System.out.println(
                     "Reschedule request rejected: doctor not found.");
 
@@ -571,6 +709,7 @@ public class AppointmentService {
 
         // Store the original appointment slot
         LocalDate oldDate = appoinment.getAppoinmentDate();
+        
         LocalTime oldTime = appoinment.getAppoinmentTime();
 
         String newSlot = newDate + " " + newTime;
@@ -583,6 +722,7 @@ public class AppointmentService {
 
         // Release the original slot
         String oldSlot = oldDate + " " + oldTime;
+
         doctor.addAvailableTimeSlot(oldSlot);
 
         // Promote the next waiting patient for the old slot
@@ -727,7 +867,7 @@ public class AppointmentService {
                 } catch (IllegalArgumentException e) {
 
                     System.out.println(
-                            "Invalid appointment data skipped.");
+                            "Invalid appointment data skipped: " + line);
                 }
             }
 
@@ -797,28 +937,54 @@ public class AppointmentService {
                 String[] data = line.split("\\|", -1);
 
                 if (data.length != 7) {
+
                     System.out.println(
-                            "Invalid reschedule request skipped.");
+                            "Invalid reschedule request skipped."
+                    );
+
                     continue;
                 }
 
                 try {
 
-                    RescheduleRequest request =
-                            new RescheduleRequest(
-                                    data[0],
-                                    data[1],
-                                    data[2],
-                                    data[3],
-                                    LocalDate.parse(data[4]),
-                                    LocalTime.parse(data[5]),
-                                    RescheduleRequest.RequestStatus.valueOf(
-                                            data[6])
-                            );
+                    // Actual RescheduleRequest constructor accepts six arguments
+                    RescheduleRequest request = new RescheduleRequest(
+                            data[0],
+                            data[1],
+                            data[2],
+                            data[3],
+                            LocalDate.parse(data[4]),
+                            LocalTime.parse(data[5])
+                    );
+
+                    // Restore request status separately
+                    request.setRequestStatus(
+                            RescheduleRequest.RequestStatus.valueOf(data[6])
+                    );
+
+                    // Prevent duplicate request ID
+                    boolean duplicate = false;
+
+                    for (RescheduleRequest existing : rescheduleRequests) {
+
+                        if (existing.getRequestId()
+                                .equalsIgnoreCase(request.getRequestId())) {
+
+                            duplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (duplicate) {
+                        System.out.println(
+                                "Duplicate reschedule request skipped."
+                        );
+                        continue;
+                    }
 
                     rescheduleRequests.add(request);
 
-                    // Only pending requests enter the queue
+                    // Only pending requests enter the runtime queue
                     if (request.getRequestStatus()
                             == RescheduleRequest.RequestStatus.PENDING) {
 
@@ -828,15 +994,23 @@ public class AppointmentService {
                 } catch (IllegalArgumentException e) {
 
                     System.out.println(
-                            "Invalid reschedule request data skipped.");
+                            "Invalid reschedule request data skipped: "
+                            + line
+                    );
                 }
             }
+
+            System.out.println(
+                    "Reschedule requests loaded successfully."
+            );
 
         } catch (IOException e) {
 
             System.out.println(
                     "Error loading reschedule requests: "
-                    + e.getMessage());
+                    + e.getMessage()
+            );
         }
+
     }
 }
