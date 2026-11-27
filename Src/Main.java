@@ -1,6 +1,6 @@
 package Src;
 
-import java.time.DateTimeException;
+import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Scanner;
@@ -12,6 +12,7 @@ import Src.models.Patient;
 import Src.models.Appoinment;
 import Src.services.AppointmentService;
 import Src.services.HomeVisitService;
+import Src.structures.PatientStack;
 
 import Src.utils.DataFileManager;
 
@@ -25,6 +26,7 @@ public class Main {
     private static DoctorService doctorService;
     private static AppointmentService appointmentService;
     private static HomeVisitService homeVisitService;
+    private static PatientStack patientStack;
 
     public static void main(String[] args) {
         
@@ -56,6 +58,10 @@ public class Main {
         appointmentService = new AppointmentService(patientService, doctorService);
 
         homeVisitService = new HomeVisitService();
+
+        patientStack = new PatientStack();
+
+        rebuildPatientStack();
 
         System.out.println("\nMediQueue services initialized successfully.");
     }
@@ -105,11 +111,11 @@ public class Main {
                     break;
 
                 case 5:
-                    System.out.println("reschedule comming soon.");
+                    rescheduleMenu();
                     break;
 
                 case 6:
-                    System.out.println("Patient history comming soon.");
+                    patientHistoryMenu();
                     break;
 
                 case 7:
@@ -211,6 +217,29 @@ public class Main {
         Patient patient = new Patient(patientId, name, mobile, email, city, age, medicalHistory);
 
         patientService.registerPatient(patient);
+
+        //check whether registration success
+        Patient registerPatient = patientService.searchPatientById(patientId);
+
+        if(registerPatient != null){
+
+            patientStack.push(registerPatient);
+
+            System.out.println("Patient added to registration history.");
+        }
+    }
+
+    //rebuild patient registration history
+    private static void rebuildPatientStack(){
+
+        patientStack.clearStack();
+
+        //patient records are loaded oldest to newest
+        for(Patient patient : patientService.getAllPatients()){
+            patientStack.push(patient);
+        }
+
+        System.out.println("Patient history stack reconstructed successfully.");
     }
 
     //search patient
@@ -633,7 +662,7 @@ public class Main {
                 return LocalDate.parse(date);
             }
 
-            catch(DateTimeException e){
+            catch(DateTimeParseException e){
                 
                 System.out.println("Invalid date. Please use YYYY-MM-DD format.");
             }
@@ -652,7 +681,7 @@ public class Main {
                 return LocalTime.parse(time);
             }
 
-            catch(DateTimeException e){
+            catch(DateTimeParseException e){
 
                 System.out.println("Invalid time. Please use HH:mm format.");
             }
@@ -760,6 +789,237 @@ public class Main {
 
         //display next patient without removimg from queue
         appointmentService.diplayNextWaitingPatient(doctorId, date, time);
+    }
+
+    //===========================================\\
+    //      starting reschedule management      \\
+    //==========================================\\
+
+    //diplay reschedule mangement menu
+    private static void rescheduleMenu(){
+
+        int choice;
+
+        do{
+
+            System.out.println("\n========== RESCHEDULE MANAGEMENT ==========");
+
+            System.out.println("1. Submit Reschedule Request");
+            System.out.println("2. View Pending Reschedule Requests");
+            System.out.println("3. Process Reschedule Requests");
+            System.out.println("4. Back to Main Menu");
+
+            System.out.println("===========================================");
+
+            choice = readInt("Enter your choice: ");
+
+            switch (choice){
+
+                case 1:
+                    submitRescheduleRequest();
+                    break;
+
+                case 2:
+                    viewPendingRescheduleRequests();
+                    break;
+
+                case 3:
+                    processRescheduleRequests();
+                    break;
+
+                case 4:
+                    System.out.println("Returning to Main Menu.......");
+                    break;
+                
+                default:
+                    System.out.println("Invalid choice. Please select 1 to 4 only.");
+            }
+        }
+
+        while(choice != 4);
+    }
+
+    //submit reschedule request
+    private static void submitRescheduleRequest(){
+
+        System.out.println("\n========== SUBMIT RESCHEDULE REQUEST ==========");
+
+        String appoinmentId = readString("Enter Appoinment ID: ");
+
+        Appoinment appoinment = appointmentService.searchAppoinmentById(appoinmentId);
+
+        if(appoinment == null){
+
+            System.out.println("Appoinment not found.");
+            return ;
+        }
+
+        //only confirmed appoinments can be reschedule
+        if(appoinment.getStatus() != Appoinment.AppoinmentStatus.CONFIRMED){
+
+            System.out.println("Only confirmed appoinments can be reschedule.");
+            return ;
+        }
+
+        System.out.println("\nCurrent appoinment details.");
+
+        appoinment.displayAppoinmentDetails();
+
+        LocalDate newDate = readAppoinmentDate();
+
+        LocalTime newTime = readAppoinmentTime();
+
+        appointmentService.rescheduleAppoinment(appoinmentId, newDate, newTime);
+    }
+
+    //view pending reschedule request
+    private static void viewPendingRescheduleRequests(){
+
+        System.out.println("\n========== PENDING RESCHEDULE REQUESTS ==========");
+
+        appointmentService.displayRescheduleQueue();
+    }
+
+    //process reschedule request
+    private static void processRescheduleRequests(){
+
+        System.out.println("\n========== PROCESS RESCHEDULE REQUESTS ==========");
+
+        String confirmation = readString("Do you want to process pending requests? (Y/N): ");
+
+        if(confirmation.equalsIgnoreCase("Y")){
+
+            appointmentService.processRescheduleRequests();
+        }
+
+        else{
+            System.out.println("Reschedule processign cancelled.");
+        }
+    }
+
+    //===========================================\\
+    //   starting patient registration history   \\
+    //===========================================\\
+
+    //patient history menu
+    private static void patientHistoryMenu(){
+
+        int choice;
+
+        do{
+
+            System.out.println("\n========== PATIENT REGISTRATION HISTORY ==========");
+
+            System.out.println("1. View Registration History");
+            System.out.println("2. View Latest Registered Patient");
+            System.out.println("3. Remove Latest History Entry");
+            System.out.println("4. View Stack Size");
+            System.out.println("5. Back to MAin Menu");
+
+            System.out.println("==================================================");
+
+            choice = readInt("Enter your choice: ");
+
+            switch(choice){
+
+                case 1:
+                    viewPatientHistory();
+                    break;
+
+                case 2:
+                    viewLatestPatient();
+                    break;
+
+                case 3:
+                    removeLatestHistoryEntry();
+                    break;
+
+                case 4:
+                    displayPatientStackSize();
+                    break;
+
+                case 5:
+                    System.out.println("Returning to Main Menu.......");
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Please select 1 to 5 only.");
+            }
+        }
+
+        while(choice != 5);
+    }
+
+    //view patient registration history
+    private static void viewPatientHistory(){
+
+        System.out.println("\n========== PATIENT REGISTRATION HISTORY ==========");
+
+        if(patientStack.isEmpty()){
+
+            System.out.println("No patient registration history found.");
+            return ;
+        }
+
+        //display patient from newest to oldest
+        patientStack.displayStack();
+    }
+
+    //view latest registered patient
+    private static void viewLatestPatient(){
+
+        System.out.println("\n========== LATEST REGISTERED PATIENT ==========");
+
+        if(patientStack.isEmpty()){
+
+            System.out.println("Patient history stack is empty.");
+            return ;
+        }
+
+        Patient patient = patientStack.peek();
+
+        if(patient != null){
+
+            patient.displayPatientDetails();
+        }
+    }
+
+    //remove latest history entry
+    private static void removeLatestHistoryEntry(){
+
+        System.out.println("\n========== REMOVE LATEST HISTORY ENTRY ==========");
+
+        if(patientStack.isEmpty()){
+
+            System.out.println("Patient history is empty.");
+            return ;
+        }
+
+        String confirmation = readString("Are you remove the latest patient from the runtime stack? (Y/N): ");
+
+        if(confirmation.equalsIgnoreCase("Y")){
+
+            Patient patient = patientStack.pop();
+
+            if(patient != null){
+
+                System.out.println("Latest history entry removed successfully.");
+                patient.displayPatientDetails();
+            }
+        }
+
+        else{
+
+            System.out.println("Operation cancelled.");
+        }
+    }
+
+    //display stack size
+    private static void displayPatientStackSize(){
+
+        System.out.println("\n========== PATIENT HISTORY STACK SIZE ==========");
+
+        System.out.println("Total patients in history stack: " + patientStack.size());
     }
     
     //==========================================\\
