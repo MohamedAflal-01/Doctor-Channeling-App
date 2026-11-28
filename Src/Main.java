@@ -3,6 +3,7 @@ package Src;
 import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 import Src.services.PatientService;
@@ -10,6 +11,7 @@ import Src.services.DoctorService;
 import Src.models.Doctor;
 import Src.models.Patient;
 import Src.models.Appoinment;
+import Src.models.RescheduleRequest;
 import Src.services.AppointmentService;
 import Src.services.HomeVisitService;
 import Src.structures.PatientStack;
@@ -123,7 +125,7 @@ public class Main {
                     break;
 
                 case 8:
-                    System.out.println("report comming soon.");
+                    reportsAnalyticsMenu();
                     break;
 
                 case 9:
@@ -142,9 +144,9 @@ public class Main {
         while(choice != 10);
     }
 
-    //==========================================\\
-    //      starting patient management         \\
-    //==========================================\\
+    //=========================================\\
+    //      starting patient management        \\
+    //=========================================\\
 
     private static void patientMenu(){
 
@@ -299,9 +301,9 @@ public class Main {
         patientService.deletePatient(patientId);
     }
 
-    //==========================================\\
-    //         starting doctor management       \\
-    //==========================================\\
+    //=========================================\\
+    //         starting doctor management      \\
+    //=========================================\\
 
     private static void doctorMenu(){
 
@@ -475,9 +477,9 @@ public class Main {
         doctorService.removeTimeSlot(doctorId, timeSlot);
     }
 
-    //==========================================\\
-    //      starting appoinment management      \\
-    //==========================================\\
+    //=========================================\\
+    //      starting appoinment management     \\
+    //=========================================\\
 
     private static void appoinmentMenu(){
         
@@ -688,9 +690,9 @@ public class Main {
         }
     }
 
-    //===========================================\\
-    //        starting waiting list menu         \\
-    //===========================================\\
+    //=========================================\\
+    //        starting waiting list menu       \\
+    //=========================================\\
 
     //diplay waiting lsit menu
     private static void waitingListMenu(){
@@ -791,9 +793,9 @@ public class Main {
         appointmentService.diplayNextWaitingPatient(doctorId, date, time);
     }
 
-    //===========================================\\
-    //      starting reschedule management      \\
-    //==========================================\\
+    //=========================================\\
+    //      starting reschedule management     \\
+    //=========================================\\
 
     //diplay reschedule mangement menu
     private static void rescheduleMenu(){
@@ -1159,6 +1161,308 @@ public class Main {
         }
 
         homeVisitService.displayShortestRoute(source, destination);
+    }
+
+    //=========================================\\
+    //        starting report management       \\
+    //=========================================\\
+
+    //report management menu
+    private static void reportsAnalyticsMenu(){
+
+        int choice;
+        do{
+
+            System.out.println("\n========== REPORTS AND ANALYTICS ==========");
+
+            System.out.println("1. Patient Report");
+            System.out.println("2. Doctor Report");
+            System.out.println("3. Appoinment Report");
+            System.out.println("4. Waiting List Report");
+            System.out.println("5. Reshcedule Request Report");
+            System.out.println("6. Home Visit Location Report");
+            System.out.println("7. Commplete Report");
+            System.out.println("8. Back to Main Menu");
+
+            choice = readInt("Enter your choice: ");
+
+            switch (choice){
+
+                case 1:
+                    displayPatientReport();
+                    break;
+
+                case 2:
+                    displayDoctorReport();
+                    break;
+
+                case 3:
+                    displayAppoinmentReport();
+                    break;
+
+                case 4:
+                    displayWaitingListReport();
+                    break;
+
+                case 5:
+                    diplayRescheduleRequestReport();
+                    break;
+
+                case 6:
+                    displayHomeVisitReport();
+                    break;
+
+                case 7:
+                    displayCompleteReport();
+                    break;
+
+                case 8:
+                    System.out.println("Returning to Main Menu.......");
+
+                default:
+                    System.out.println("Invalid choice. please choice 1 to 8 only.");
+            }
+        }
+
+        while(choice != 8);
+    }
+
+    private static void displayPatientReport(){
+
+        ArrayList<Patient> patients = new ArrayList<>(patientService.getAllPatients());
+
+        int totalPatients = patients.size();
+        int totalAge =0;
+
+        int YoungestAge = Integer.MAX_VALUE;
+        int oldestAge = Integer.MIN_VALUE;
+
+        for(Patient patient : patients){
+
+            int age = patient.getAge();
+            totalAge += age;
+
+            if(age < YoungestAge){
+                YoungestAge = age;
+            }
+
+            if(age > oldestAge){
+                oldestAge = age;
+            }
+        }
+
+        System.out.println("\n========== PATIENT REPORT ==========");
+        System.out.println("Total Registered Patients: " + totalPatients);
+
+        if(totalPatients > 0){
+
+            double averageAge = (double) totalAge / totalPatients;
+
+            System.out.printf("Average Patient Age: %.2f years%n", averageAge);
+            System.out.println("Youngest Patient Age: " + YoungestAge);
+            System.out.println("Oldest Patient Age: " + oldestAge);
+        }
+
+        else{
+
+            System.out.println("No patient records available.");
+        }
+
+        System.out.println("====================================");
+    }
+
+    //docor report
+    private static void displayDoctorReport(){
+
+        ArrayList<Doctor> doctors = new ArrayList<>(doctorService.getAllDoctors());
+
+        int totalDoctors = doctors.size();
+        int totalAvailableSlots = 0;
+
+        System.out.println("\n========== DOCTOR REPORT ==========");
+
+        System.out.println("Total Registered Doctors: " + totalDoctors);
+
+        for(Doctor doctor : doctors){
+
+            int availableSlots = doctor.getAvailableTimeSlots().size();
+
+            totalAvailableSlots += availableSlots;
+
+            System.out.println("\nDoctorID: " + doctor.getDoctorId());
+            System.out.println("Doctor Name: " + doctor.getName());
+            System.out.println("Specialization: " + doctor.getSpecialization());
+            System.out.println("Available Slots: " + availableSlots);
+        }
+
+        System.out.println("\nTotal Available Appoinment Slots: " + totalAvailableSlots);
+
+        System.out.println("===================================");
+    }
+
+    //appoinment report
+    private static void displayAppoinmentReport(){
+
+        ArrayList<Appoinment> appoinments = appointmentService.getAllAppoinments();
+
+        int confirmed = 0;
+        int waiting = 0;
+        int cancelled =0;
+        int completed = 0;
+        int rescheduled = 0;
+
+        for(Appoinment appoinment : appoinments){
+
+            switch (appoinment.getStatus()){
+
+                case CONFIRMED:
+                    confirmed++;
+                    break;
+
+                case WAITING:
+                    waiting++;
+                    break;
+
+                case CANCELLED:
+                    cancelled++;
+                    break;
+
+                case COMPLETED:
+                    completed++;
+                    break;
+
+                case RESCHEDULED:
+                    rescheduled++;
+                    break;
+            }
+        }
+
+        System.out.println("\n========== APPOINMENT REPORT ==========");
+        System.out.println("Total Appoinments: " + appoinments.size());
+        System.out.println("Confirmed Appoinments: " + confirmed);
+        System.out.println("Waiting Appoinments: " + waiting);
+        System.out.println("Cancelled Appoinments: " + cancelled);
+        System.out.println("Completed Appoinments: " + completed);
+        System.out.println("Rescheduled Appoinments: " + rescheduled);
+        System.out.println("=======================================");
+    }
+
+    //waiting lisrt report
+    private static void displayWaitingListReport(){
+
+        ArrayList<Appoinment> appoinments = appointmentService.getAllAppoinments();
+
+        int waitingCount = 0;
+
+        System.out.println("\n========== WAITING LIST REPORT ==========");
+
+        for(Appoinment appoinment : appoinments){
+
+            if(appoinment.getStatus() == Appoinment.AppoinmentStatus.WAITING){
+
+                waitingCount++;
+
+                System.out.println("\nAppoinment ID: " + appoinment.getAppoinmentId());
+
+                System.out.println("Patient ID: " + appoinment.getPatientId());
+
+                System.out.println("Doctor ID: " + appoinment.getdoctorId());
+
+                System.out.println("Date: " + appoinment.getAppoinmentDate());
+
+                System.out.println("Time: " + appoinment.getAppoinmentTime());
+
+                System.out.println("Queue Number: " + appoinment.getQueueNumber());
+            }
+        }
+
+        System.out.println("\nTotal Patients Waiting Count: " + waitingCount);
+        System.out.println("=========================================");
+    }
+
+    //reschedule report
+    private static void diplayRescheduleRequestReport(){
+
+        ArrayList<RescheduleRequest> requests = appointmentService.getAllRescheduleRequets();
+
+        int pending = 0;
+        int approved = 0;
+        int rejected = 0;
+        int completed = 0;
+
+        System.out.println("\n========== RESCHEDULE REQUEST REPORT ==========");
+
+        for(RescheduleRequest request : requests){
+
+            switch(request.getRequestStatus()){
+
+                case PENDING:
+                    pending++;
+                    break;
+
+                case APPROVED:
+                    approved++;
+                    break;
+
+                case REJECTED:
+                    rejected++;
+                    break;
+
+                case COMPLETED:
+                    completed++;
+                    break;
+            }
+
+            System.out.println("\nRequest ID: " + request.getRequestId());
+            System.out.println("Appoinment ID: " + request.getAppoinmentId());
+            System.out.println("Patient ID: " + request.getPatientId());
+            System.out.println("Status: " + request.getRequestStatus());
+        }
+
+        System.out.println("\nTotal Requests: " + requests.size());
+        System.out.println("Pending: " + pending);
+        System.out.println("Approved: " + approved);
+        System.out.println("Rejected: " + rejected);
+        System.out.println("Completed: " + completed);
+
+        System.out.println("===============================================");
+    }
+
+    //home visit report
+    private static void displayHomeVisitReport(){
+
+        System.out.println("\n========== HOME VISIT LOCATION REPORT ==========");
+
+        System.out.println("Total Registered Locations: " + homeVisitService.getTotalLocations());
+
+        System.out.println("\nRegistered Locations: ");
+
+        homeVisitService.displayAllLocationNames();
+        System.out.println("================================================");
+    }
+
+    //complete report
+    private static void displayCompleteReport(){
+
+        System.out.println("\n");
+        System.out.println("========== COMPLETE REPORT ==========");
+
+        System.out.println("\n--- PATIENT OVERVIEW ---");
+        System.out.println("Total Patients: " + patientService.getAllPatients().size());
+
+        System.out.println("\n--- DOCTOR OVERVIEW ---");
+        System.out.println("Total Doctors: " + doctorService.getAllDoctors().size());
+
+        System.out.println("\n--- APPOINMENT OVERVIEW ---");
+        System.out.println("Total Appoinments: " + appointmentService.getAllAppoinments().size());
+
+        System.out.println("\n--- RESCHEDULE OVERVIEW ---");
+        System.out.println("Total Reschedule Requests: " + appointmentService.getAllRescheduleRequets().size());
+
+        System.out.println("\n--- HOME VISIT OVERVIEW ---");
+        System.out.println("Total Locations: " + homeVisitService.getTotalLocations());
+
+        System.out.println("\n=====================================");
     }
     
     //=========================================\\

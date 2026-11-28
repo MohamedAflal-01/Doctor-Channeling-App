@@ -1013,4 +1013,14 @@ public class AppointmentService {
         }
 
     }
+
+    public ArrayList<Appoinment> getAllAppoinments(){
+
+        return new ArrayList<>(appoinments);
+    }
+
+    public ArrayList<RescheduleRequest> getAllRescheduleRequets(){
+
+        return new ArrayList<>(rescheduleRequests);
+    }
 }
