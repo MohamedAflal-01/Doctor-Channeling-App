@@ -1040,8 +1040,8 @@ public class Main {
             System.out.println("3. Display All Locations");
             System.out.println("4. Display Road Networks");
             System.out.println("5. Find Shortest Route Using (Dijkstra)");
-            System.out.println("6. Calculate Shortest Distances Using (Floyd-Warshall)");
-            System.out.println("7. Display All Shortest Distance");
+            System.out.println("6. Find Shortest Distances Using (Floyd-Warshall)");
+            System.out.println("7. Display All Shortest Distances");
             System.out.println("8. Back to Main Menu");
 
             choice = readInt("Enter your choice: ");
@@ -1061,27 +1061,26 @@ public class Main {
                     break;
 
                 case 4:
-                    homeVisitService.getGraph().displayGraph();
+                    homeVisitService.displayLocations();
+                    break;
 
                 case 5:
                     findDijkstraRoute();
                     break;
 
                 case 6:
-                    homeVisitService.calculateFloyedWarshallRoutes();
+                    findFloydWarshallDistance();
                     break;
 
                 case 7:
                     homeVisitService.calculateFloyedWarshallRoutes();
-                    homeVisitService.getGraph().displayGraph();
-                    break;
 
                 case 8:
                     System.out.println("Returning to Main Menu......");
                     break;
 
                 default:
-                    System.out.println("Invalid choice. Please try again.");
+                    System.out.println("Invalid choice. Please choice 1 to 8 only.");
             }
         }
 
@@ -1142,6 +1141,24 @@ public class Main {
         }
 
         homeVisitService.calculateDijkstraRoute(source, destination);
+    }
+
+    //find the shortest distance
+    private static void findFloydWarshallDistance(){
+
+        System.out.println("\n========== FLOYED-WARSHALL ==========");
+
+        String source = readString("Enter starting loaction: ");
+
+        String destination = readString("Enter destination location: ");
+
+        if(!homeVisitService.locationExists(source) || !homeVisitService.locationExists(destination)){
+
+            System.out.println("Invalid location. please check the location names.");
+            return ;
+        }
+
+        homeVisitService.displayShortestRoute(source, destination);
     }
     
     //=========================================\\

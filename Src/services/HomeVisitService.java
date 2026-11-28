@@ -201,7 +201,7 @@ public class HomeVisitService {
                         String roadKey = first + "|" + second;
 
                         if(saveRoads.add(roadKey)){
-                            writer.write("Road|" + source + "|" + destination + "|" + edge.getDistance());
+                            writer.write("ROAD|" + source + "|" + destination + "|" + edge.getDistance());
 
                             writer.newLine();
                         }
