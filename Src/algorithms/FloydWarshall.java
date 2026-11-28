@@ -30,33 +30,41 @@ public class FloydWarshall {
 
         locationIndexes = new HashMap<>();
 
-        //assign index to each location
-        for(int i=0; i<size; i++){
-            for (int j=0; j<size; j++){
-                if(i==j){
+       //assign an index to every location first
+       for(int i=0; i< size; i++){
+
+        locationIndexes.put(locations[i], i);
+       }
+
+       //initialize the distance metrix
+       for(int i =0; i< size ; i++){
+            for(int j=0; j< size; j++){
+                if(i == j){
                     distances[i][j] = 0;
                 }
                 else{
                     distances[i][j] = Double.POSITIVE_INFINITY;
                 }
             }
-        }
+       }
 
-        //add road distance
-        for(int i=0; i<size; i++){
+       //add the existing road distance
+        for(int i=0; i< size; i++){
+
             String location = locations[i];
 
             for(Graph.Edge edge : graph.getNeighbours(location)){
 
                 Integer destinationIndex = locationIndexes.get(edge.getDestination());
 
-                if (destinationIndex == null){
-                    System.out.println("destination location not found: " + edge.getDestination());
+                if(destinationIndex == null){
+                    System.out.println("Destination location not found: " + edge.getDestination());
                     continue;
                 }
 
-                distances[i][destinationIndex] = edge.getDistance();
+                distances[i][destinationIndex] = Math.min(distances[i][destinationIndex], edge.getDistance());
             }
+    
         }
     }
 
