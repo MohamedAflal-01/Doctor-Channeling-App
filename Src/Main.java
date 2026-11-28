@@ -119,7 +119,7 @@ public class Main {
                     break;
 
                 case 7:
-                    System.out.println("home comming soon.");
+                    homeVisitMenu();
                     break;
 
                 case 8:
@@ -1021,10 +1021,132 @@ public class Main {
 
         System.out.println("Total patients in history stack: " + patientStack.size());
     }
+
+    //=========================================\\
+    //     starting home visit management      \\
+    //=========================================\\
+
+    //home visit menu
+    private static void homeVisitMenu(){
+
+        int choice;
+
+        do {
+
+            System.out.println("\n========== HOME VISIT MANAGEMENT ==========");
+
+            System.out.println("1. Add Location");
+            System.out.println("2. Add Road");
+            System.out.println("3. Display All Locations");
+            System.out.println("4. Display Road Networks");
+            System.out.println("5. Find Shortest Route Using (Dijkstra)");
+            System.out.println("6. Calculate Shortest Distances Using (Floyd-Warshall)");
+            System.out.println("7. Display All Shortest Distance");
+            System.out.println("8. Back to Main Menu");
+
+            choice = readInt("Enter your choice: ");
+
+            switch(choice){
+
+                case 1:
+                    addHomeVisitLocation();
+                    break;
+
+                case 2:
+                    addHomeVisitRoad();
+                    break;
+
+                case 3:
+                    homeVisitService.displayAllLocationNames();
+                    break;
+
+                case 4:
+                    homeVisitService.getGraph().displayGraph();
+
+                case 5:
+                    findDijkstraRoute();
+                    break;
+
+                case 6:
+                    homeVisitService.calculateFloyedWarshallRoutes();
+                    break;
+
+                case 7:
+                    homeVisitService.calculateFloyedWarshallRoutes();
+                    homeVisitService.getGraph().displayGraph();
+                    break;
+
+                case 8:
+                    System.out.println("Returning to Main Menu......");
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+
+        while(choice != 8);
+    }
+
+    //add home visit location
+    private static void addHomeVisitLocation(){
+
+        System.out.println("\n========== ADD lOCATION ==========");
+
+        String location = readString("Enter location name: ");
+
+        if(location.isEmpty()){
+            System.out.println("Location cannot be empty.");
+            return ;
+        }
+
+        homeVisitService.addLocation(location);
+
+        System.out.println("Location operation completed.");
+    }
+
+    //add home visit road
+    private static void addHomeVisitRoad(){
+
+        System.out.println("\n========== ADD ROAD ==========");
+
+        String source = readString("Enter starting location: ");
+
+        String destination = readString("Enter destination location: ");
+
+        double distance = readDouble("Entere distance in kilometer: ");
+
+        if(distance <= 0){
+            System.out.println("Distance must be grater than zero: ");
+            return ;
+        }
+
+        homeVisitService.addRoad(source, destination, distance);
+
+        System.out.println("Road operation completed");
+    }
+
+    //find shortest rout
+    private static void findDijkstraRoute(){
+
+        System.out.println("\n========== DIJKSTRA SHORTEST ROUTE ==========");
+
+        String source = readString("Enter starting location: ");
+
+        String destination = readString("Enter destination location");
+
+        if(!homeVisitService.locationExists(source) || !homeVisitService.locationExists(destination)){
+
+            System.out.println("Invalid location. Please check the loaction names.");
+            return ;
+        }
+
+        homeVisitService.calculateDijkstraRoute(source, destination);
+    }
     
-    //==========================================\\
-    //              input method                \\
-    //==========================================\\
+    //=========================================\\
+    //              input method               \\
+    //=========================================\\
 
     //read text input 
     private static String readString(String message){
